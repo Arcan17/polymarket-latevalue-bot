@@ -1,0 +1,39 @@
+# Variables de entorno y claves privadas
+.env
+*.env
+
+# Base de datos
+*.db
+*.sqlite
+
+# Logs y estadísticas
+*.log
+stats.json
+trades.log
+archive/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+venv_py39_backup/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Notas personales
+*.txt
+
+# Archivos temporales
+/tmp/
+*.tmp
+*.bak
+
+# Archivos de PID
+*.pid
