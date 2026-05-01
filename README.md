@@ -1,107 +1,153 @@
 # Late Value Bot — Polymarket BTC Up/Down
 
-Bot de trading algorítmico para mercados de predicción BTC Up/Down en [Polymarket](https://polymarket.com). Detecta ineficiencias de precio usando valoración Black-Scholes y feeds de precio en tiempo real.
+Algorithmic trading bot for BTC Up/Down prediction markets on [Polymarket](https://polymarket.com). Detects price inefficiencies using Black-Scholes option pricing and real-time price feeds.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue)
 ![Polymarket](https://img.shields.io/badge/Platform-Polymarket-purple)
 ![Mode](https://img.shields.io/badge/Mode-Paper%20%7C%20Live-green)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat)
 
-## Como funciona
+---
 
-El bot monitorea mercados BTC Up/Down con menos de 90 segundos al vencimiento. Cuando el precio del mercado está rezagado respecto al precio real de BTC, calcula una ventaja estadística (edge) usando el modelo Black-Scholes y entra en la posición favorable.
+## How It Works
+
+The bot monitors BTC Up/Down markets with less than 90 seconds to expiration. When the market price lags behind the real BTC price, it calculates a statistical edge using the Black-Scholes model and enters the favorable position automatically.
 
 ```
-Precio BTC real (Binance/Chainlink)
+Real BTC Price (Binance / Chainlink)
            ↓
-   Modelo Black-Scholes
+   Black-Scholes Model
            ↓
-   P(YES) calculado vs precio mercado
+   Calculated P(YES) vs market price
            ↓
-   Si edge > 12% → entrada automática
+   If edge > 12% → automatic entry
            ↓
-   Mantiene hasta vencimiento
+   Hold until expiration
 ```
 
-## Stack tecnico
+---
 
-- **Python 3.9+** — asyncio para feeds concurrentes
-- **Chainlink + Binance** — precio BTC spot en tiempo real
-- **Polymarket CLOB API** — ejecucion de ordenes
-- **Black-Scholes** — modelo de valoracion de opciones adaptado
-- **Rich** — dashboard en terminal en tiempo real
+## Demo
 
-## Arquitectura
+```
+[Bot] Market found: BTC-UP @ $47,000  |  60s to expiration
+[Bot] Binance spot: $46,900
+[Bot] Black-Scholes → P(YES) = 0.131  |  Market price = $0.10
+[Bot] Edge detected: 31% > MIN_EDGE (12%) ✓
+
+[PAPER] Entering YES @ $0.10  |  Size: $1.00 USDC
+...
+
+[Bot] Market expiring in 5s...
+[Bot] Final BTC price: $47,500 → YES wins
+[PAPER] Exit @ $0.90  |  PnL: +$0.80 (+800%)
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.9+ with asyncio |
+| Price feeds | Binance Spot API + Chainlink RTDS (WebSocket) |
+| Trading platform | Polymarket CLOB API |
+| Pricing model | Black-Scholes (adapted for binary options) |
+| Dashboard | Rich (real-time terminal UI) |
+| Notifications | Telegram Bot API |
+| Logging | Structured audit trail |
+
+---
+
+## Architecture
 
 ```
 polymarket_latevalue/
-├── main.py              # Entry point y loop principal
-├── dashboard.py         # Dashboard terminal en tiempo real
-├── config/              # Configuracion y settings
-├── feeds/               # Feeds de datos en tiempo real
-│   ├── crypto_feed.py   # Precio BTC (Binance)
-│   ├── rtds_feed.py     # Feed Chainlink
-│   ├── market_discovery.py  # Descubrimiento de mercados
-│   └── orderbook_feed.py    # Order book Polymarket
-├── strategy/            # Logica de trading
-│   ├── evaluator.py     # Black-Scholes + calculo de edge
-│   └── vol_estimator.py # Estimacion de volatilidad
-└── execution/           # Ejecucion de ordenes
+├── main.py                  # Entry point and main loop
+├── dashboard.py             # Real-time terminal dashboard
+├── config/
+│   └── settings.py          # Configuration and parameters
+├── feeds/
+│   ├── crypto_feed.py       # BTC spot price (Binance)
+│   ├── rtds_feed.py         # Chainlink RTDS feed
+│   ├── market_discovery.py  # Active market discovery
+│   └── orderbook_feed.py    # Polymarket order book
+├── strategy/
+│   ├── evaluator.py         # Black-Scholes + edge calculation
+│   └── vol_estimator.py     # Volatility estimation
+└── execution/
+    └── executor.py          # Order execution (paper / live)
 ```
 
-## Instalacion
+> See [ARCHITECTURE.md](ARCHITECTURE.md) for a full deep dive into the system design, data flows, and trading logic.
+
+---
+
+## Getting Started
 
 ```bash
-# Clonar repositorio
+# Clone the repository
 git clone https://github.com/Arcan17/polymarket-latevalue-bot.git
 cd polymarket-latevalue-bot
 
-# Crear ambiente virtual
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Instalar dependencias
+# Install dependencies
 pip install -r requirements.txt
 
-# Configurar variables de entorno
+# Configure environment
 cp .env.example .env
-# Editar .env con tus credenciales
+# Edit .env with your credentials
 ```
 
-## Uso
+---
+
+## Usage
 
 ```bash
-# Modo paper (sin dinero real, recomendado para empezar)
+# Paper mode — simulates trades with no real capital (recommended)
 TRADING_MODE=PAPER python main.py
 
-# Ver dashboard
+# Open the real-time dashboard (separate terminal)
 python dashboard.py
 ```
 
-## Configuracion
+---
 
-Copia `.env.example` a `.env` y configura:
+## Configuration
 
-| Variable | Descripcion | Default |
+Copy `.env.example` to `.env` and set the following:
+
+| Variable | Description | Default |
 |---|---|---|
-| `TRADING_MODE` | PAPER o LIVE | PAPER |
-| `MIN_EDGE` | Edge minimo para entrar (0.12 = 12%) | 0.12 |
-| `ORDER_SIZE_USDC` | Tamano de orden en USDC | 1.0 |
-| `MAX_DAILY_LOSS_USDC` | Kill switch: perdida maxima diaria | 5.0 |
-| `ENTRY_WINDOW_S` | Ventana de entrada en segundos | 90 |
+| `TRADING_MODE` | `PAPER` or `LIVE` | `PAPER` |
+| `MIN_EDGE` | Minimum edge to enter a trade (0.12 = 12%) | `0.12` |
+| `ORDER_SIZE_USDC` | Order size in USDC | `1.0` |
+| `MAX_DAILY_LOSS_USDC` | Kill switch: maximum daily loss | `5.0` |
+| `ENTRY_WINDOW_S` | Only trade markets with less than N seconds left | `90` |
 
-## Caracteristicas
+---
 
-- **Modo paper**: Simula trades sin dinero real para validar estrategia
-- **Kill switch**: Para automaticamente si pierde mas del limite diario
-- **Dashboard en tiempo real**: Muestra posiciones, PnL y mercados monitoreados
-- **Volatilidad adaptativa**: Ajusta el modelo segun condiciones del mercado
-- **Multi-feed**: Usa Chainlink y Binance para mayor precision
+## Features
 
-## Disclaimer
+- **Paper mode** — Simulate trades with no real capital to validate the strategy before going live
+- **Kill switch** — Automatically stops trading if daily loss exceeds the configured limit
+- **Real-time dashboard** — Displays positions, PnL, and monitored markets in the terminal
+- **Adaptive volatility** — Adjusts the Black-Scholes model based on current market conditions
+- **Multi-feed** — Uses both Chainlink and Binance for higher accuracy and redundancy
+- **Audit trail** — Every trade logged with timestamp, entry/exit prices, and PnL
 
-Este bot es un proyecto personal de investigacion y aprendizaje. El trading en mercados de prediccion conlleva riesgo de perdida de capital. Usar en modo PAPER antes de considerar capital real.
+---
 
-## Autor
+## Risk Warning
 
-Bastian — Python Developer
-Vina del Mar, Chile
+This bot is a personal research and learning project. Trading on prediction markets carries risk of capital loss. Always use **PAPER mode** before considering real capital.
+
+---
+
+## Author
+
+Bastian — Python Developer  
+Viña del Mar, Chile
