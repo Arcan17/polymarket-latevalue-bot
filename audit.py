@@ -17,6 +17,7 @@ Métricas incluidas:
  12. Decisión: ¿listo para live?
  13. Verificación contra API de Polymarket
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ from pathlib import Path
 from collections import defaultdict
 
 # ─── Verificación contra Polymarket API ──────────────────────────────────────
+
 
 def _fetch_polymarket_result(market_id: str, token_id: str) -> dict | None:
     """
@@ -52,10 +54,10 @@ def _fetch_polymarket_result(market_id: str, token_id: str) -> dict | None:
                 break
 
         return {
-            "resolved":         data.get("closed", False),
+            "resolved": data.get("closed", False),
             "winning_token_id": winning_token,
-            "outcome_prices":   outcome_prices,
-            "our_token_won":    winning_token == token_id if winning_token else None,
+            "outcome_prices": outcome_prices,
+            "our_token_won": winning_token == token_id if winning_token else None,
         }
     except Exception:
         return None
@@ -67,9 +69,9 @@ def _verify_against_polymarket(trades: list[dict]) -> None:
     Solo funciona en trades que ya están resueltos en Polymarket.
     """
     correct = 0
-    wrong   = 0
+    wrong = 0
     pending = 0
-    errors  = 0
+    errors = 0
     wrong_trades = []
 
     # Deduplicar por market_id para no spamear la API
@@ -103,8 +105,8 @@ def _verify_against_polymarket(trades: list[dict]) -> None:
             pending += 1
             continue
 
-        bot_won       = t["result"] == "WIN"
-        poly_won      = result["our_token_won"]
+        bot_won = t["result"] == "WIN"
+        poly_won = result["our_token_won"]
 
         if poly_won is None:
             pending += 1
@@ -114,37 +116,57 @@ def _verify_against_polymarket(trades: list[dict]) -> None:
             correct += 1
         else:
             wrong += 1
-            wrong_trades.append({
-                "entry_time": t.get("entry_time"),
-                "symbol":     t.get("symbol"),
-                "side":       t.get("side"),
-                "strike_bot": t.get("strike"),
-                "bot_result": t.get("result"),
-                "poly_result": "WIN" if poly_won else "LOSS",
-                "pnl_logged": t.get("pnl"),
-                "strike_confirmed": t.get("strike_confirmed"),
-            })
+            wrong_trades.append(
+                {
+                    "entry_time": t.get("entry_time"),
+                    "symbol": t.get("symbol"),
+                    "side": t.get("side"),
+                    "strike_bot": t.get("strike"),
+                    "bot_result": t.get("result"),
+                    "poly_result": "WIN" if poly_won else "LOSS",
+                    "pnl_logged": t.get("pnl"),
+                    "strike_confirmed": t.get("strike_confirmed"),
+                }
+            )
 
     total_verified = correct + wrong
     print(f"\n  Resueltos verificados : {total_verified}")
     print(f"  Pendientes/sin datos  : {pending + errors}")
 
     if total_verified == 0:
-        print(yellow("  ⚠ No hay trades resueltos verificables aún (mercados muy recientes)"))
+        print(
+            yellow(
+                "  ⚠ No hay trades resueltos verificables aún (mercados muy recientes)"
+            )
+        )
         return
 
     match_rate = correct / total_verified
     if match_rate >= 0.98:
-        print(green(f"  ✓ Coincidencia bot vs Polymarket: {match_rate:.1%} ({correct}/{total_verified})"))
+        print(
+            green(
+                f"  ✓ Coincidencia bot vs Polymarket: {match_rate:.1%} ({correct}/{total_verified})"
+            )
+        )
         print(green("    Los resultados del bot son fiables."))
     elif match_rate >= 0.90:
-        print(yellow(f"  ⚠ Coincidencia: {match_rate:.1%} — {wrong} trades con resultado incorrecto"))
+        print(
+            yellow(
+                f"  ⚠ Coincidencia: {match_rate:.1%} — {wrong} trades con resultado incorrecto"
+            )
+        )
     else:
-        print(red(f"  ✗ Solo {match_rate:.1%} coinciden — resultados del bot NO son fiables"))
+        print(
+            red(
+                f"  ✗ Solo {match_rate:.1%} coinciden — resultados del bot NO son fiables"
+            )
+        )
 
     if wrong_trades:
         print(f"\n  Trades con resultado INCORRECTO ({len(wrong_trades)}):")
-        print(f"  {'Fecha':<20} {'Sym':<5} {'Lado':<5} {'Strike':<12} {'Bot':<6} {'Poly':<6} {'PnL':>8} {'Conf':>5}")
+        print(
+            f"  {'Fecha':<20} {'Sym':<5} {'Lado':<5} {'Strike':<12} {'Bot':<6} {'Poly':<6} {'PnL':>8} {'Conf':>5}"
+        )
         print(f"  {'-'*70}")
         for wt in wrong_trades:
             conf = "✓" if wt.get("strike_confirmed") else "✗"
@@ -161,10 +183,13 @@ def _verify_against_polymarket(trades: list[dict]) -> None:
                 pnl_correction += -pnl_logged - 1.02
             else:
                 pnl_correction += -pnl_logged + 0.85
-        print(f"\n  Corrección de PnL si se ajustan estos trades: ${pnl_correction:+.4f}")
+        print(
+            f"\n  Corrección de PnL si se ajustan estos trades: ${pnl_correction:+.4f}"
+        )
 
 
 # ─── Carga de datos ───────────────────────────────────────────────────────────
+
 
 def load_trades(path: str = "trades.log", from_date: str = None) -> list[dict]:
     trades = []
@@ -184,37 +209,56 @@ def load_trades(path: str = "trades.log", from_date: str = None) -> list[dict]:
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-SEP  = "─" * 62
+SEP = "─" * 62
 SEP2 = "═" * 62
+
 
 def header(title: str):
     print(f"\n{SEP2}")
     print(f"  {title}")
     print(SEP2)
 
+
 def subheader(title: str):
     print(f"\n{SEP}")
     print(f"  {title}")
     print(SEP)
 
-def green(s):  return f"\033[92m{s}\033[0m"
-def yellow(s): return f"\033[93m{s}\033[0m"
-def red(s):    return f"\033[91m{s}\033[0m"
+
+def green(s):
+    return f"\033[92m{s}\033[0m"
+
+
+def yellow(s):
+    return f"\033[93m{s}\033[0m"
+
+
+def red(s):
+    return f"\033[91m{s}\033[0m"
+
 
 def traffic(val, g, y):
     """g=green threshold, y=yellow threshold (assumes higher is better)."""
-    if val >= g:   return green(f"{val:.4f}")
-    elif val >= y: return yellow(f"{val:.4f}")
-    else:          return red(f"{val:.4f}")
+    if val >= g:
+        return green(f"{val:.4f}")
+    elif val >= y:
+        return yellow(f"{val:.4f}")
+    else:
+        return red(f"{val:.4f}")
+
 
 def traffic_low(val, g, y):
     """Lower is better (e.g. ECE, Brier)."""
-    if val <= g:   return green(f"{val:.4f}")
-    elif val <= y: return yellow(f"{val:.4f}")
-    else:          return red(f"{val:.4f}")
+    if val <= g:
+        return green(f"{val:.4f}")
+    elif val <= y:
+        return yellow(f"{val:.4f}")
+    else:
+        return red(f"{val:.4f}")
 
 
 # ─── Análisis principal ───────────────────────────────────────────────────────
+
 
 def run_audit(path: str = "trades.log", from_date: str = None):
     trades = load_trades(path, from_date)
@@ -241,7 +285,9 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         if result not in ("WIN", "LOSS"):
             errors.append(f"  Trade {i}: result='{result}' inesperado")
         if t.get("edge", 0) <= 0:
-            errors.append(f"  Trade {i}: edge={t.get('edge')} ≤ 0 (entrada sin ventaja)")
+            errors.append(
+                f"  Trade {i}: edge={t.get('edge')} ≤ 0 (entrada sin ventaja)"
+            )
 
     if errors:
         for e in errors:
@@ -251,23 +297,23 @@ def run_audit(path: str = "trades.log", from_date: str = None):
 
     # Convertir a arrays numéricos
     entry_prices = np.array([t["entry_price"] for t in trades])
-    our_probs    = np.array([t["our_prob"]    for t in trades])
-    edges        = np.array([t["edge"]        for t in trades])
-    results_bin  = np.array([1 if t["result"] == "WIN" else 0 for t in trades])
-    pnl_arr      = np.array([t["pnl"]         for t in trades])
-    sizes        = np.array([t.get("size_usdc", 1.0) for t in trades])
+    our_probs = np.array([t["our_prob"] for t in trades])
+    edges = np.array([t["edge"] for t in trades])
+    results_bin = np.array([1 if t["result"] == "WIN" else 0 for t in trades])
+    pnl_arr = np.array([t["pnl"] for t in trades])
+    sizes = np.array([t.get("size_usdc", 1.0) for t in trades])
 
     # ── 2. ESTADÍSTICAS BÁSICAS ───────────────────────────────────────────────
     subheader("2. Estadísticas Básicas")
 
-    n_trades  = len(trades)
-    n_wins    = int(results_bin.sum())
-    n_losses  = n_trades - n_wins
-    win_rate  = n_wins / n_trades
+    n_trades = len(trades)
+    n_wins = int(results_bin.sum())
+    n_losses = n_trades - n_wins
+    win_rate = n_wins / n_trades
     total_pnl = pnl_arr.sum()
-    mean_pnl  = pnl_arr.mean()
+    mean_pnl = pnl_arr.mean()
     total_bet = sizes.sum()
-    roi       = total_pnl / total_bet if total_bet > 0 else 0
+    roi = total_pnl / total_bet if total_bet > 0 else 0
 
     print(f"  Trades totales : {n_trades}")
     print(f"  Ganados        : {n_wins}  ({win_rate:.1%})")
@@ -277,16 +323,20 @@ def run_audit(path: str = "trades.log", from_date: str = None):
     print(f"  Total apostado : ${total_bet:.2f}")
     print(f"  ROI            : {roi:+.2%}")
     print(f"  Edge medio     : {edges.mean():.3f}")
-    print(f"  Edge medio WIN : {edges[results_bin==1].mean():.3f}" if n_wins > 0 else "")
-    print(f"  Edge medio LOSS: {edges[results_bin==0].mean():.3f}" if n_losses > 0 else "")
+    print(
+        f"  Edge medio WIN : {edges[results_bin==1].mean():.3f}" if n_wins > 0 else ""
+    )
+    print(
+        f"  Edge medio LOSS: {edges[results_bin==0].mean():.3f}" if n_losses > 0 else ""
+    )
 
     # ── 3. Z-SCORE ────────────────────────────────────────────────────────────
     subheader("3. Z-Score (¿Edge real vs azar?)")
 
     # H0: win rate = market implied (entry_price)
     expected_wins = entry_prices.sum()
-    variance      = (entry_prices * (1 - entry_prices)).sum()
-    z_score       = (results_bin.sum() - expected_wins) / (variance ** 0.5)
+    variance = (entry_prices * (1 - entry_prices)).sum()
+    z_score = (results_bin.sum() - expected_wins) / (variance**0.5)
 
     z_str = traffic(z_score, 2.0, 1.5)
     print(f"  Wins esperados (por precio mercado): {expected_wins:.1f}")
@@ -306,7 +356,9 @@ def run_audit(path: str = "trades.log", from_date: str = None):
     subheader("4. Bootstrap — Intervalo de Confianza 95% en PnL medio")
 
     rng = np.random.default_rng(42)
-    boots = [rng.choice(pnl_arr, size=n_trades, replace=True).mean() for _ in range(10_000)]
+    boots = [
+        rng.choice(pnl_arr, size=n_trades, replace=True).mean() for _ in range(10_000)
+    ]
     ci_low, ci_high = np.percentile(boots, [2.5, 97.5])
 
     ci_str = f"[${ci_low:+.4f}, ${ci_high:+.4f}]"
@@ -322,6 +374,7 @@ def run_audit(path: str = "trades.log", from_date: str = None):
 
     try:
         from scipy.stats import spearmanr
+
         corr, pval = spearmanr(edges, pnl_arr)
         corr_str = traffic(corr, 0.15, 0.05)
         p_str = green(f"p={pval:.3f}") if pval < 0.05 else yellow(f"p={pval:.3f}")
@@ -339,10 +392,13 @@ def run_audit(path: str = "trades.log", from_date: str = None):
             r = np.empty_like(order, dtype=float)
             r[order] = np.arange(len(x)) + 1
             return r
+
         re, rp = rank(edges), rank(pnl_arr)
         n = len(re)
-        corr = 1 - 6 * ((re - rp)**2).sum() / (n * (n**2 - 1))
-        print(f"  Spearman r = {traffic(corr, 0.15, 0.05)} (scipy no disponible, p-value omitido)")
+        corr = 1 - 6 * ((re - rp) ** 2).sum() / (n * (n**2 - 1))
+        print(
+            f"  Spearman r = {traffic(corr, 0.15, 0.05)} (scipy no disponible, p-value omitido)"
+        )
 
     # ── 6. CALIBRACIÓN ────────────────────────────────────────────────────────
     subheader("6. Calibración del Modelo (ECE y Brier Score)")
@@ -362,13 +418,19 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         mask = (our_probs >= b_low) & (our_probs < b_high)
         if mask.sum() == 0:
             continue
-        mean_pred   = our_probs[mask].mean()
+        mean_pred = our_probs[mask].mean()
         mean_actual = results_bin[mask].mean()
-        n_bin       = mask.sum()
-        diff        = abs(mean_pred - mean_actual)
-        ece_num    += (n_bin / n_trades) * diff
-        diff_str    = green(f"{diff:+.3f}") if diff < 0.05 else (yellow(f"{diff:+.3f}") if diff < 0.10 else red(f"{diff:+.3f}"))
-        print(f"  {label:<14} {mean_pred:>6.3f} {mean_actual:>8.3f} {n_bin:>5}   {diff_str}")
+        n_bin = mask.sum()
+        diff = abs(mean_pred - mean_actual)
+        ece_num += (n_bin / n_trades) * diff
+        diff_str = (
+            green(f"{diff:+.3f}")
+            if diff < 0.05
+            else (yellow(f"{diff:+.3f}") if diff < 0.10 else red(f"{diff:+.3f}"))
+        )
+        print(
+            f"  {label:<14} {mean_pred:>6.3f} {mean_actual:>8.3f} {n_bin:>5}   {diff_str}"
+        )
 
     print(f"\n  ECE: {traffic_low(ece_num, 0.04, 0.08)}")
     if ece_num < 0.04:
@@ -395,15 +457,13 @@ def run_audit(path: str = "trades.log", from_date: str = None):
             shares = sizes[i] / entry_prices[i]
             fees_sell[i] = shares * tex * TAKER_FEE_RATE * (1 - tex)
 
-    fees       = fees_buy + fees_sell
+    fees = fees_buy + fees_sell
     total_fees = fees.sum()
-    tp_count   = int((fees_sell > 0).sum())
+    tp_count = int((fees_sell > 0).sum())
 
     # PnL bruto (sin ningún fee)
     gross_pnl = np.where(
-        results_bin == 1,
-        sizes / entry_prices - sizes,   # shares × $1 - cost
-        -sizes
+        results_bin == 1, sizes / entry_prices - sizes, -sizes  # shares × $1 - cost
     )
     net_pnl = gross_pnl - fees
 
@@ -413,7 +473,9 @@ def run_audit(path: str = "trades.log", from_date: str = None):
     print(f"  Fees totales pagadas    : ${total_fees:.4f}")
     print(f"  PnL bruto (sin fees)    : ${gross_pnl.sum():+.4f}")
     print(f"  PnL neto (con fees)     : ${net_pnl.sum():+.4f}")
-    print(f"  Fees como % del bruto   : {total_fees / max(abs(gross_pnl.sum()), 0.001):.1%}")
+    print(
+        f"  Fees como % del bruto   : {total_fees / max(abs(gross_pnl.sum()), 0.001):.1%}"
+    )
 
     # Edge mínimo requerido por trade para cubrir fees
     min_edges_yes = TAKER_FEE_RATE * (1 - entry_prices)  # simplificado YES
@@ -439,12 +501,18 @@ def run_audit(path: str = "trades.log", from_date: str = None):
             pnls = np.array(pnls)
             wins = [t for t in trades if t.get(key) == k and t["result"] == "WIN"]
             wr = len(wins) / len(pnls) if pnls.size > 0 else 0
-            pnl_str = green(f"${pnls.sum():+.4f}") if pnls.sum() >= 0 else red(f"${pnls.sum():+.4f}")
-            print(f"  {str(k):<14} {len(pnls):>4} {pnl_str:>20} ${pnls.mean():>+8.4f} {wr:>8.1%}")
+            pnl_str = (
+                green(f"${pnls.sum():+.4f}")
+                if pnls.sum() >= 0
+                else red(f"${pnls.sum():+.4f}")
+            )
+            print(
+                f"  {str(k):<14} {len(pnls):>4} {pnl_str:>20} ${pnls.mean():>+8.4f} {wr:>8.1%}"
+            )
 
-    breakdown("symbol",       "Símbolo")
-    breakdown("side",         "Lado (YES/NO)")
-    breakdown("book_source",  "Fuente del book")
+    breakdown("symbol", "Símbolo")
+    breakdown("side", "Lado (YES/NO)")
+    breakdown("book_source", "Fuente del book")
     breakdown("strike_confirmed", "Strike confirmado")
 
     # Breakdown por timeframe (5m vs 15m) — nuevo desde Apr 21
@@ -452,7 +520,7 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         breakdown("timeframe", "Timeframe (5m vs 15m)")
 
     # Breakdown por tipo de salida (EXP vs TP) — nuevo desde Apr 21
-    tp_trades  = [t for t in trades if t.get("settle_source") == "TAKE-PROFIT"]
+    tp_trades = [t for t in trades if t.get("settle_source") == "TAKE-PROFIT"]
     exp_trades = [t for t in trades if t.get("settle_source") != "TAKE-PROFIT"]
     if tp_trades:
         print(f"\n  Por tipo de salida (EXP vs TP):")
@@ -460,27 +528,47 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         for label, grp in [("EXP", exp_trades), ("TAKE-PROFIT", tp_trades)]:
             if not grp:
                 continue
-            wr    = sum(1 for t in grp if t["result"] == "WIN") / len(grp)
-            pnls  = np.array([t["pnl"] for t in grp])
-            wr_str = green(f"{wr:.1%}") if wr >= 0.80 else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
-            print(f"  {label:<14} {len(grp):>4} {wr_str:>18} ${pnls.mean():>+10.4f} ${pnls.sum():>+10.4f}")
+            wr = sum(1 for t in grp if t["result"] == "WIN") / len(grp)
+            pnls = np.array([t["pnl"] for t in grp])
+            wr_str = (
+                green(f"{wr:.1%}")
+                if wr >= 0.80
+                else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
+            )
+            print(
+                f"  {label:<14} {len(grp):>4} {wr_str:>18} ${pnls.mean():>+10.4f} ${pnls.sum():>+10.4f}"
+            )
         # Nota sobre rentabilidad del TP
         if len(tp_trades) >= 3:
-            tp_avg   = np.mean([t["pnl"] for t in tp_trades])
-            exp_avg  = np.mean([t["pnl"] for t in exp_trades]) if exp_trades else 0
+            tp_avg = np.mean([t["pnl"] for t in tp_trades])
+            exp_avg = np.mean([t["pnl"] for t in exp_trades]) if exp_trades else 0
             if tp_avg > exp_avg:
-                print(green(f"\n  ✓ TP genera más PnL medio que EXP (+${tp_avg-exp_avg:+.4f}/trade)"))
+                print(
+                    green(
+                        f"\n  ✓ TP genera más PnL medio que EXP (+${tp_avg-exp_avg:+.4f}/trade)"
+                    )
+                )
             else:
-                print(yellow(f"\n  ~ TP genera menos PnL medio que EXP (${tp_avg-exp_avg:+.4f}/trade) — normal si TP limita ganancias grandes"))
+                print(
+                    yellow(
+                        f"\n  ~ TP genera menos PnL medio que EXP (${tp_avg-exp_avg:+.4f}/trade) — normal si TP limita ganancias grandes"
+                    )
+                )
         else:
-            print(yellow(f"\n  ⚠ Solo {len(tp_trades)} trade(s) TP — insuficiente para conclusiones"))
+            print(
+                yellow(
+                    f"\n  ⚠ Solo {len(tp_trades)} trade(s) TP — insuficiente para conclusiones"
+                )
+            )
 
     # ── 9. ROLLING PnL (20 trades) ────────────────────────────────────────────
     subheader("9. Rolling PnL — 20 últimas operaciones (¿edge se mantiene?)")
 
     if n_trades >= 20:
         window = 20
-        rolling_means = [pnl_arr[max(0,i-window):i].mean() for i in range(window, n_trades+1)]
+        rolling_means = [
+            pnl_arr[max(0, i - window) : i].mean() for i in range(window, n_trades + 1)
+        ]
         print(f"  PnL medio (primeros 20 trades) : ${rolling_means[0]:+.4f}")
         print(f"  PnL medio (últimos  20 trades) : ${rolling_means[-1]:+.4f}")
         trend = rolling_means[-1] - rolling_means[0]
@@ -515,9 +603,17 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         if abs(gap) < 0.03:
             print(green("  ✓ Dirección y resultado alineados — buen timing de entrada"))
         elif gap > 0.05:
-            print(yellow("  ⚠ Aciertas dirección pero pierdes algunas — revisar precio entrada o fees"))
+            print(
+                yellow(
+                    "  ⚠ Aciertas dirección pero pierdes algunas — revisar precio entrada o fees"
+                )
+            )
         else:
-            print(red("  ✗ Gap grande — ganas sin acertar dirección (posible flip de NO a YES)"))
+            print(
+                red(
+                    "  ✗ Gap grande — ganas sin acertar dirección (posible flip de NO a YES)"
+                )
+            )
 
     # ── 11. ANÁLISIS ADICIONAL ────────────────────────────────────────────────
     subheader("11. Análisis: Settle Source, TTE y Volatilidad")
@@ -530,26 +626,46 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         for t in trades:
             ss_groups[t.get("settle_source", "?")].append(t)
         for src, grp in sorted(ss_groups.items()):
-            wr = sum(1 for t in grp if t["result"]=="WIN") / len(grp)
+            wr = sum(1 for t in grp if t["result"] == "WIN") / len(grp)
             avg_pnl = np.mean([t["pnl"] for t in grp])
-            wr_str = green(f"{wr:.1%}") if wr >= 0.80 else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
+            wr_str = (
+                green(f"{wr:.1%}")
+                if wr >= 0.80
+                else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
+            )
             print(f"  {src:<14} {len(grp):>4} {wr_str:>18} ${avg_pnl:>+10.4f}")
         if "RTDS-post" in ss_groups and "RTDS-pre" in ss_groups:
-            post_wr = sum(1 for t in ss_groups["RTDS-post"] if t["result"]=="WIN") / len(ss_groups["RTDS-post"])
-            pre_wr  = sum(1 for t in ss_groups["RTDS-pre"]  if t["result"]=="WIN") / len(ss_groups["RTDS-pre"])
+            post_wr = sum(
+                1 for t in ss_groups["RTDS-post"] if t["result"] == "WIN"
+            ) / len(ss_groups["RTDS-post"])
+            pre_wr = sum(
+                1 for t in ss_groups["RTDS-pre"] if t["result"] == "WIN"
+            ) / len(ss_groups["RTDS-pre"])
             if post_wr > pre_wr + 0.05:
-                print(green(f"\n  ✓ RTDS-post tiene mejor WR que RTDS-pre (+{post_wr-pre_wr:.1%})"))
+                print(
+                    green(
+                        f"\n  ✓ RTDS-post tiene mejor WR que RTDS-pre (+{post_wr-pre_wr:.1%})"
+                    )
+                )
             elif abs(post_wr - pre_wr) <= 0.05:
                 print(yellow(f"\n  ~ Diferencia pequeña entre RTDS-post y RTDS-pre"))
             else:
-                print(red(f"\n  ✗ RTDS-pre tiene MEJOR WR — revisar lógica de settlement"))
+                print(
+                    red(f"\n  ✗ RTDS-pre tiene MEJOR WR — revisar lógica de settlement")
+                )
 
     # TTE analysis
     if any("tte_entry_s" in t for t in trades):
         tte_arr = np.array([t.get("tte_entry_s", 0) for t in trades])
         print(f"\n  Por ventana de entrada (TTE):")
         print(f"  {'Ventana':<20} {'N':>4} {'WR':>8} {'PnL medio':>12}")
-        tte_bins = [(0, 30, "0-30s (muy tardío)"), (30, 60, "30-60s"), (60, 90, "60-90s"), (90, 120, "90-120s"), (120, 180, "120-180s (temprano)")]
+        tte_bins = [
+            (0, 30, "0-30s (muy tardío)"),
+            (30, 60, "30-60s"),
+            (60, 90, "60-90s"),
+            (90, 120, "90-120s"),
+            (120, 180, "120-180s (temprano)"),
+        ]
         for lo, hi, label in tte_bins:
             mask = (tte_arr >= lo) & (tte_arr < hi)
             if mask.sum() == 0:
@@ -557,23 +673,43 @@ def run_audit(path: str = "trades.log", from_date: str = None):
             grp_results = results_bin[mask]
             grp_pnl = pnl_arr[mask]
             wr = grp_results.mean()
-            wr_str = green(f"{wr:.1%}") if wr >= 0.80 else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
-            print(f"  {label:<20} {mask.sum():>4} {wr_str:>18} ${grp_pnl.mean():>+10.4f}")
+            wr_str = (
+                green(f"{wr:.1%}")
+                if wr >= 0.80
+                else (yellow(f"{wr:.1%}") if wr >= 0.65 else red(f"{wr:.1%}"))
+            )
+            print(
+                f"  {label:<20} {mask.sum():>4} {wr_str:>18} ${grp_pnl.mean():>+10.4f}"
+            )
 
     # Strike confirmed analysis
     if any("strike_confirmed" in t for t in trades):
         confirmed = [t for t in trades if t.get("strike_confirmed")]
         unconfirmed = [t for t in trades if not t.get("strike_confirmed")]
         if confirmed and unconfirmed:
-            wr_conf   = sum(1 for t in confirmed   if t["result"]=="WIN") / len(confirmed)
-            wr_unconf = sum(1 for t in unconfirmed if t["result"]=="WIN") / len(unconfirmed)
+            wr_conf = sum(1 for t in confirmed if t["result"] == "WIN") / len(confirmed)
+            wr_unconf = sum(1 for t in unconfirmed if t["result"] == "WIN") / len(
+                unconfirmed
+            )
             print(f"\n  Strike confirmado vs estimado:")
-            print(f"  Confirmado ({len(confirmed):>3}): WR={green(f'{wr_conf:.1%}') if wr_conf>=0.80 else yellow(f'{wr_conf:.1%}')}")
-            print(f"  Estimado   ({len(unconfirmed):>3}): WR={green(f'{wr_unconf:.1%}') if wr_unconf>=0.80 else red(f'{wr_unconf:.1%}')}")
+            print(
+                f"  Confirmado ({len(confirmed):>3}): WR={green(f'{wr_conf:.1%}') if wr_conf>=0.80 else yellow(f'{wr_conf:.1%}')}"
+            )
+            print(
+                f"  Estimado   ({len(unconfirmed):>3}): WR={green(f'{wr_unconf:.1%}') if wr_unconf>=0.80 else red(f'{wr_unconf:.1%}')}"
+            )
             if wr_conf > wr_unconf + 0.03:
-                print(green(f"  ✓ Strike confirmado tiene mejor WR (+{wr_conf-wr_unconf:.1%}) — validado"))
+                print(
+                    green(
+                        f"  ✓ Strike confirmado tiene mejor WR (+{wr_conf-wr_unconf:.1%}) — validado"
+                    )
+                )
             elif wr_conf < wr_unconf - 0.03:
-                print(red(f"  ✗ Strike estimado tiene mejor WR — revisar lógica de captura"))
+                print(
+                    red(
+                        f"  ✗ Strike estimado tiene mejor WR — revisar lógica de captura"
+                    )
+                )
             else:
                 print(yellow(f"  ~ Diferencia pequeña — no concluyente aún"))
 
@@ -586,34 +722,66 @@ def run_audit(path: str = "trades.log", from_date: str = None):
 
     # 1. Z-score
     z_ok = z_score >= 2.0
-    criteria.append((z_ok, z_score >= 1.5, f"Z-score={z_score:.2f} (necesita ≥2.0)", "Z-score bajo"))
+    criteria.append(
+        (z_ok, z_score >= 1.5, f"Z-score={z_score:.2f} (necesita ≥2.0)", "Z-score bajo")
+    )
 
     # 2. Bootstrap CI
     ci_ok = ci_low > 0
-    criteria.append((ci_ok, ci_high > 0, f"CI 95% lower=${ci_low:+.4f} (necesita >0)", "CI cruza cero"))
+    criteria.append(
+        (
+            ci_ok,
+            ci_high > 0,
+            f"CI 95% lower=${ci_low:+.4f} (necesita >0)",
+            "CI cruza cero",
+        )
+    )
 
     # 3. Spearman
     try:
-        spear_ok  = corr >= 0.15
+        spear_ok = corr >= 0.15
         spear_war = corr >= 0.05
     except NameError:
         spear_ok = spear_war = False
-    criteria.append((spear_ok, spear_war, f"Spearman r={corr:.3f} (necesita ≥0.15)", "Correlación débil"))
+    criteria.append(
+        (
+            spear_ok,
+            spear_war,
+            f"Spearman r={corr:.3f} (necesita ≥0.15)",
+            "Correlación débil",
+        )
+    )
 
     # 4. ECE
-    ece_ok  = ece_num <= 0.04
+    ece_ok = ece_num <= 0.04
     ece_war = ece_num <= 0.08
-    criteria.append((ece_ok, ece_war, f"ECE={ece_num:.4f} (necesita ≤0.04)", "ECE alta"))
+    criteria.append(
+        (ece_ok, ece_war, f"ECE={ece_num:.4f} (necesita ≤0.04)", "ECE alta")
+    )
 
     # 5. Fees threshold
-    fee_ok  = above_threshold >= 0.70
+    fee_ok = above_threshold >= 0.70
     fee_war = above_threshold >= 0.50
-    criteria.append((fee_ok, fee_war, f"Trades>umbral fees: {above_threshold:.1%} (necesita ≥70%)", "Muchas entradas no cubren fees"))
+    criteria.append(
+        (
+            fee_ok,
+            fee_war,
+            f"Trades>umbral fees: {above_threshold:.1%} (necesita ≥70%)",
+            "Muchas entradas no cubren fees",
+        )
+    )
 
     # 6. PnL neto positivo
-    pnl_ok  = net_pnl.sum() > 0
+    pnl_ok = net_pnl.sum() > 0
     pnl_war = net_pnl.sum() > -2
-    criteria.append((pnl_ok, pnl_war, f"PnL neto=${net_pnl.sum():+.4f} (necesita >0)", "PnL neto negativo"))
+    criteria.append(
+        (
+            pnl_ok,
+            pnl_war,
+            f"PnL neto=${net_pnl.sum():+.4f} (necesita >0)",
+            "PnL neto negativo",
+        )
+    )
 
     print(f"\n  {'Criterio':<52} {'Estado':>8}")
     print(f"  {'-'*60}")
@@ -632,7 +800,11 @@ def run_audit(path: str = "trades.log", from_date: str = None):
         print(green(f"\n  ✓ LISTO PARA LIVE — {score}/6 criterios cumplidos"))
         print(green("    Empieza con $1/trade, máx $5 activo. Monitorea 1 hora."))
     elif score >= 3:
-        print(yellow(f"\n  ⚠ CONTINÚA EN PAPER — {score}/6 criterios. Necesitas más trades."))
+        print(
+            yellow(
+                f"\n  ⚠ CONTINÚA EN PAPER — {score}/6 criterios. Necesitas más trades."
+            )
+        )
         print(yellow("    Objetivo: 100-150 trades antes de reevaluar."))
     else:
         print(red(f"\n  ✗ NO LISTO — solo {score}/6. Revisa el modelo."))
@@ -644,16 +816,26 @@ def run_audit(path: str = "trades.log", from_date: str = None):
 
     trades_with_id = [t for t in trades if t.get("market_id") and t.get("token_id")]
     if not trades_with_id:
-        print(yellow("  ⚠ Trades sin market_id — solo trades nuevos (post-hoy) se pueden verificar."))
+        print(
+            yellow(
+                "  ⚠ Trades sin market_id — solo trades nuevos (post-hoy) se pueden verificar."
+            )
+        )
         print(yellow("    Los trades anteriores no guardaban market_id."))
-        print(yellow("    A partir de ahora todos los trades incluyen market_id para verificación."))
+        print(
+            yellow(
+                "    A partir de ahora todos los trades incluyen market_id para verificación."
+            )
+        )
     else:
         print(f"  Verificando {len(trades_with_id)} trades contra Polymarket API...")
         _verify_against_polymarket(trades_with_id)
 
     # ── RESUMEN FINAL ─────────────────────────────────────────────────────────
     header("RESUMEN EJECUTIVO")
-    print(f"  Trades    : {n_trades} | WR: {win_rate:.1%} | PnL neto: ${net_pnl.sum():+.4f}")
+    print(
+        f"  Trades    : {n_trades} | WR: {win_rate:.1%} | PnL neto: ${net_pnl.sum():+.4f}"
+    )
     print(f"  Z-score   : {z_score:.2f} | ECE: {ece_num:.4f} | Brier: {brier:.4f}")
     print(f"  Edge medio: {edges.mean():.3f} | Fees totales: ${total_fees:.4f}")
     print(f"\n  Para ejecutar contra otro log:")
@@ -674,5 +856,6 @@ if __name__ == "__main__":
         print(f"No se encontró el archivo: {log_path}")
     except Exception as e:
         import traceback
+
         print(f"Error en auditoría: {e}")
         traceback.print_exc()

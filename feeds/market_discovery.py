@@ -26,6 +26,7 @@ Fees (verificados):
   - Maker: 0% (rebate completo del 100%)
   - Taker: 7.2%
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,11 +46,11 @@ BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 
 # slug_prefix → símbolo
 SERIES_CONFIGS = {
-    "btc-updown-5m":  "BTC",
-    "eth-updown-5m":  "ETH",
-    "sol-updown-5m":  "SOL",
-    "xrp-updown-5m":  "XRP",
-    "bnb-updown-5m":  "BNB",
+    "btc-updown-5m": "BTC",
+    "eth-updown-5m": "ETH",
+    "sol-updown-5m": "SOL",
+    "xrp-updown-5m": "XRP",
+    "bnb-updown-5m": "BNB",
     "btc-updown-15m": "BTC",
     "eth-updown-15m": "ETH",
     "sol-updown-15m": "SOL",
@@ -59,11 +60,11 @@ SERIES_CONFIGS = {
 
 # Tamaño de slot por serie (segundos) — determina los timestamps a buscar
 SERIES_SLOT_SIZES = {
-    "btc-updown-5m":  300,
-    "eth-updown-5m":  300,
-    "sol-updown-5m":  300,
-    "xrp-updown-5m":  300,
-    "bnb-updown-5m":  300,
+    "btc-updown-5m": 300,
+    "eth-updown-5m": 300,
+    "sol-updown-5m": 300,
+    "xrp-updown-5m": 300,
+    "bnb-updown-5m": 300,
     "btc-updown-15m": 900,
     "eth-updown-15m": 900,
     "sol-updown-15m": 900,
@@ -73,8 +74,10 @@ SERIES_SLOT_SIZES = {
 
 # Binance symbol map
 BINANCE_SYMBOLS = {
-    "BTC": "BTCUSDT", "ETH": "ETHUSDT",
-    "SOL": "SOLUSDT", "XRP": "XRPUSDT",
+    "BTC": "BTCUSDT",
+    "ETH": "ETHUSDT",
+    "SOL": "SOLUSDT",
+    "XRP": "XRPUSDT",
     "BNB": "BNBUSDT",
 }
 
@@ -95,10 +98,10 @@ class MarketDiscovery:
 
     def __init__(
         self,
-        spot_price_fn=None,          # callable() → float | None  (BTC, retrocompat)
-        price_history_fn=None,       # callable(symbol, ts) → float | None  (Binance WS snapshot)
-        rtds_price_at_fn=None,       # callable(symbol, ts) → float | None  (Chainlink exacto)
-        spot_price_fns: dict = None, # {"BTC": fn, "ETH": fn, "SOL": fn}
+        spot_price_fn=None,  # callable() → float | None  (BTC, retrocompat)
+        price_history_fn=None,  # callable(symbol, ts) → float | None  (Binance WS snapshot)
+        rtds_price_at_fn=None,  # callable(symbol, ts) → float | None  (Chainlink exacto)
+        spot_price_fns: dict = None,  # {"BTC": fn, "ETH": fn, "SOL": fn}
         lookahead_markets: int = 2,
     ) -> None:
         if spot_price_fns:
@@ -110,15 +113,18 @@ class MarketDiscovery:
         self._price_history_fn = price_history_fn
         self._rtds_price_at_fn = rtds_price_at_fn  # Chainlink histórico exacto
         self._lookahead = lookahead_markets
-        self._markets: dict[str, Market] = {}       # condition_id → Market
-        self._price_confirmed: set[str] = set()     # condition_ids con precio confirmado
-        self._price_source: dict[str, str] = {}     # condition_id → "rtds" | "binance" | "pre"
+        self._markets: dict[str, Market] = {}  # condition_id → Market
+        self._price_confirmed: set[str] = set()  # condition_ids con precio confirmado
+        self._price_source: dict[str, str] = (
+            {}
+        )  # condition_id → "rtds" | "binance" | "pre"
 
     @property
     def active_markets(self) -> list[Market]:
         now = time.time()
         return [
-            m for m in self._markets.values()
+            m
+            for m in self._markets.values()
             if m.status == MarketStatus.ACTIVE and not m.is_expired
         ]
 
@@ -137,8 +143,11 @@ class MarketDiscovery:
                     confirmed = m.market_id in self._price_confirmed
                     if confirmed:
                         src_key = self._price_source.get(m.market_id, "rtds")
-                        source = {"rtds": "Chainlink-RTDS ✓", "binance": "Binance-REST ✓",
-                                  "pre": "pre-inicio ⚠️"}.get(src_key, "confirmado ✓")
+                        source = {
+                            "rtds": "Chainlink-RTDS ✓",
+                            "binance": "Binance-REST ✓",
+                            "pre": "pre-inicio ⚠️",
+                        }.get(src_key, "confirmado ✓")
                     else:
                         source = "estimado"
                     logger.info(
@@ -151,14 +160,19 @@ class MarketDiscovery:
                     # Actualizar strike solo si:
                     # 1. El nuevo tiene precio confirmado
                     # 2. El existente NO tiene precio confirmado (era estimación futura)
-                    if (m.market_id in self._price_confirmed
-                            and existing.market_id not in self._price_confirmed):
+                    if (
+                        m.market_id in self._price_confirmed
+                        and existing.market_id not in self._price_confirmed
+                    ):
                         old_price = existing.reference_price
                         existing.reference_price = m.reference_price
                         self._price_confirmed.add(existing.market_id)
                         src_key = self._price_source.get(m.market_id, "rtds")
-                        src_label = {"rtds": "Chainlink-RTDS", "binance": "Binance-REST",
-                                     "pre": "pre-inicio ⚠️"}.get(src_key, "confirmado")
+                        src_label = {
+                            "rtds": "Chainlink-RTDS",
+                            "binance": "Binance-REST",
+                            "pre": "pre-inicio ⚠️",
+                        }.get(src_key, "confirmado")
                         logger.info(
                             f"[{m.symbol}] Strike confirmado: "
                             f"${old_price:,.2f} → ${m.reference_price:,.2f} ({src_label})"
@@ -193,14 +207,19 @@ class MarketDiscovery:
 
                 for ts in sorted(timestamps_to_check):
                     slug = f"{slug_prefix}-{ts}"
-                    market = await self._fetch_event_by_slug(session, slug, symbol, slot_s=slot_s)
+                    market = await self._fetch_event_by_slug(
+                        session, slug, symbol, slot_s=slot_s
+                    )
                     if market is not None:
                         markets.append(market)
 
         return markets
 
     async def _fetch_event_by_slug(
-        self, session: aiohttp.ClientSession, slug: str, symbol: str = "BTC",
+        self,
+        session: aiohttp.ClientSession,
+        slug: str,
+        symbol: str = "BTC",
         slot_s: int = 300,
     ) -> Optional[Market]:
         """
@@ -209,9 +228,7 @@ class MarketDiscovery:
         """
         try:
             url = f"{GAMMA_MARKETS_URL}?slug={slug}"
-            async with session.get(
-                url, timeout=aiohttp.ClientTimeout(total=8)
-            ) as resp:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=8)) as resp:
                 if resp.status != 200:
                     return None
                 markets_data = await resp.json()
@@ -234,7 +251,12 @@ class MarketDiscovery:
 
             # Extraer interval_start del evento
             import datetime
-            start_time_str = event.get("startTime") or event.get("startDate") or mkt.get("startDate", "")
+
+            start_time_str = (
+                event.get("startTime")
+                or event.get("startDate")
+                or mkt.get("startDate", "")
+            )
             interval_start: Optional[float] = None
             if start_time_str:
                 try:
@@ -268,8 +290,9 @@ class MarketDiscovery:
 
             confirmed_price = rtds_price or rest_price
             price_src = "rtds" if rtds_price else ("binance" if rest_price else None)
-            market = self._parse_market(event, mkt, symbol, interval_start, confirmed_price,
-                                        slot_s=slot_s)
+            market = self._parse_market(
+                event, mkt, symbol, interval_start, confirmed_price, slot_s=slot_s
+            )
 
             # Marcar como confirmado si tenemos precio exacto
             if market and confirmed_price is not None:
@@ -441,7 +464,9 @@ class MarketDiscovery:
             try:
                 historical = self._price_history_fn(symbol, interval_start)
             except TypeError:
-                historical = self._price_history_fn(interval_start) if symbol == "BTC" else None
+                historical = (
+                    self._price_history_fn(interval_start) if symbol == "BTC" else None
+                )
             if historical is not None:
                 return historical
 

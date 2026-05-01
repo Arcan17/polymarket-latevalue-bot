@@ -14,6 +14,7 @@ WebSocket protocol:
 NOTE: The WS message format is based on Polymarket's documented API.
       If messages arrive in a different schema, update _process_message().
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -49,7 +50,7 @@ class OrderbookFeed:
         self._ws = None
         self._pending_subscriptions: set[str] = set()
         self._last_message_time: float = time.time()
-        self._STALE_TIMEOUT = 30.0   # reconectar si no llega nada en 30s
+        self._STALE_TIMEOUT = 30.0  # reconectar si no llega nada en 30s
         self._RESUB_INTERVAL = 60.0  # re-suscribir cada 60s para refrescar snapshots
 
     def subscribe(self, token_id: str) -> None:
@@ -78,7 +79,9 @@ class OrderbookFeed:
                 logger.info("OrderbookFeed cancelled.")
                 break
             except Exception as e:
-                logger.error(f"OrderbookFeed error: {e}. Reconnecting in {self._reconnect_delay}s")
+                logger.error(
+                    f"OrderbookFeed error: {e}. Reconnecting in {self._reconnect_delay}s"
+                )
                 await asyncio.sleep(self._reconnect_delay)
                 self._reconnect_delay = min(self._reconnect_delay * 2, 30.0)
             else:
@@ -90,8 +93,8 @@ class OrderbookFeed:
         logger.info("OrderbookFeed connecting...")
         async with websockets.connect(
             settings.clob_ws_url,
-            ping_interval=20,   # enviar ping cada 20s para mantener la conexión viva
-            ping_timeout=10,    # reconectar si no hay pong en 10s
+            ping_interval=20,  # enviar ping cada 20s para mantener la conexión viva
+            ping_timeout=10,  # reconectar si no hay pong en 10s
         ) as ws:
             self._ws = ws
             self._reconnect_delay = 1.0
@@ -103,7 +106,9 @@ class OrderbookFeed:
                 await self._send_subscribe(ws, all_tokens)
             self._pending_subscriptions.clear()
 
-            logger.info(f"OrderbookFeed connected, subscribed to {len(all_tokens)} tokens.")
+            logger.info(
+                f"OrderbookFeed connected, subscribed to {len(all_tokens)} tokens."
+            )
 
             # Task 1: flush pending subscriptions cuando no llegan mensajes
             async def _subscription_flusher():
@@ -124,7 +129,9 @@ class OrderbookFeed:
                         if all_subs:
                             try:
                                 await self._send_subscribe(ws, all_subs)
-                                logger.debug(f"OrderbookFeed: re-suscripción periódica ({len(all_subs)} tokens)")
+                                logger.debug(
+                                    f"OrderbookFeed: re-suscripción periódica ({len(all_subs)} tokens)"
+                                )
                             except Exception:
                                 pass
                         last_resub = time.time()
@@ -144,13 +151,15 @@ class OrderbookFeed:
                             pass
                         return  # sale de _connect → el loop de run() reconecta
 
-            flusher  = asyncio.create_task(_subscription_flusher())
+            flusher = asyncio.create_task(_subscription_flusher())
             watchdog = asyncio.create_task(_watchdog())
             try:
                 async for raw in ws:
                     if not self._running:
                         break
-                    self._last_message_time = time.time()  # cualquier mensaje = conexión viva
+                    self._last_message_time = (
+                        time.time()
+                    )  # cualquier mensaje = conexión viva
                     try:
                         msg = json.loads(raw)
                         self._process_message(msg)
@@ -163,10 +172,12 @@ class OrderbookFeed:
     async def _send_subscribe(self, ws, token_ids: list[str]) -> None:
         # Polymarket CLOB WS subscription format (verified April 2026):
         # {"assets_ids": ["token_id", ...], "type": "market"}
-        payload = json.dumps({
-            "assets_ids": token_ids,
-            "type": "market",
-        })
+        payload = json.dumps(
+            {
+                "assets_ids": token_ids,
+                "type": "market",
+            }
+        )
         await ws.send(payload)
         logger.debug(f"Subscribed to {len(token_ids)} tokens")
 
@@ -206,7 +217,8 @@ class OrderbookFeed:
             logger.debug(
                 f"Book snapshot {token_id[:10]}: "
                 f"best_bid={bids[0].price:.3f} best_ask={asks[0].price:.3f}"
-                if bids and asks else f"Book snapshot {token_id[:10]}: empty"
+                if bids and asks
+                else f"Book snapshot {token_id[:10]}: empty"
             )
 
         elif msg_type == "price_change":
@@ -251,8 +263,9 @@ class OrderbookFeed:
                 continue
         return levels
 
-
-    def inject_rest_book(self, token_id: str, ask: float | None, bid: float | None) -> None:
+    def inject_rest_book(
+        self, token_id: str, ask: float | None, bid: float | None
+    ) -> None:
         """
         Almacena precios obtenidos por REST cuando el WS aún no tiene snapshot.
         El WS sobreescribirá automáticamente cuando llegue un mensaje real.

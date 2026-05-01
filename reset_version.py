@@ -30,10 +30,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-BASE        = Path(__file__).parent
-TRADES      = BASE / "trades.log"
-STATS       = BASE / "stats.json"
-VERSION_F   = BASE / "VERSION"
+BASE = Path(__file__).parent
+TRADES = BASE / "trades.log"
+STATS = BASE / "stats.json"
+VERSION_F = BASE / "VERSION"
 ARCHIVE_DIR = BASE / "archive"
 
 
@@ -72,16 +72,24 @@ def _summarize_trades(path: Path) -> dict:
         pass
 
     if not trades:
-        return {"count": 0, "wins": 0, "losses": 0, "pnl": 0.0, "corrections": corrections}
+        return {
+            "count": 0,
+            "wins": 0,
+            "losses": 0,
+            "pnl": 0.0,
+            "corrections": corrections,
+        }
 
-    wins   = sum(1 for t in trades if t.get("result") == "WIN")
+    wins = sum(1 for t in trades if t.get("result") == "WIN")
     losses = sum(1 for t in trades if t.get("result") == "LOSS")
-    pnl    = sum(t.get("pnl", 0.0) for t in trades)
+    pnl = sum(t.get("pnl", 0.0) for t in trades)
     wagered = sum(t.get("size_usdc", 0.0) for t in trades)
-    stale  = sum(1 for t in trades if t.get("edge", 0) > 0.35)
-    real   = len(trades) - stale
+    stale = sum(1 for t in trades if t.get("edge", 0) > 0.35)
+    real = len(trades) - stale
 
-    dates = sorted({t.get("entry_time", "")[:10] for t in trades if t.get("entry_time")})
+    dates = sorted(
+        {t.get("entry_time", "")[:10] for t in trades if t.get("entry_time")}
+    )
     date_range = f"{dates[0]} → {dates[-1]}" if dates else "?"
 
     return {
@@ -103,8 +111,8 @@ def main() -> None:
     ARCHIVE_DIR.mkdir(exist_ok=True)
 
     current_version = _read_version()
-    next_version    = _next_version(current_version)
-    date_str        = datetime.now().strftime("%Y-%m-%d")
+    next_version = _next_version(current_version)
+    date_str = datetime.now().strftime("%Y-%m-%d")
 
     # ── Resumen de la versión actual ──────────────────────────────────────────
     print()
@@ -114,12 +122,22 @@ def main() -> None:
 
     summary = _summarize_trades(TRADES)
     if summary["count"] > 0:
-        wr = summary["wins"] / (summary["wins"] + summary["losses"]) if (summary["wins"] + summary["losses"]) > 0 else 0
+        wr = (
+            summary["wins"] / (summary["wins"] + summary["losses"])
+            if (summary["wins"] + summary["losses"]) > 0
+            else 0
+        )
         roi = summary["pnl"] / summary["wagered"] if summary["wagered"] > 0 else 0
-        print(f"\n  Trades en {current_version}:  {summary['count']}  ({summary['date_range']})")
-        print(f"  Resultados:      {summary['wins']}W / {summary['losses']}L  (WR {wr:.0%})")
+        print(
+            f"\n  Trades en {current_version}:  {summary['count']}  ({summary['date_range']})"
+        )
+        print(
+            f"  Resultados:      {summary['wins']}W / {summary['losses']}L  (WR {wr:.0%})"
+        )
         print(f"  PnL total:       ${summary['pnl']:+.2f}  (ROI {roi:+.1%})")
-        print(f"  Stale (edge>35%): {summary['stale']} trades  ← serán datos limpios en {next_version}")
+        print(
+            f"  Stale (edge>35%): {summary['stale']} trades  ← serán datos limpios en {next_version}"
+        )
         print(f"  Reales (edge≤35%): {summary['real']} trades")
     else:
         print(f"\n  trades.log vacío o sin datos — reseteo limpio.")
@@ -130,12 +148,18 @@ def main() -> None:
     if auto_confirm:
         reason = "reset automático"
     else:
-        reason = input("  Motivo del reset (ej: 'max_edge guard implementado'): ").strip()
+        reason = input(
+            "  Motivo del reset (ej: 'max_edge guard implementado'): "
+        ).strip()
         if not reason:
             reason = "sin motivo especificado"
 
         print()
-        confirm = input(f"  ¿Confirmar reset {current_version} → {next_version}? [s/N]: ").strip().lower()
+        confirm = (
+            input(f"  ¿Confirmar reset {current_version} → {next_version}? [s/N]: ")
+            .strip()
+            .lower()
+        )
         if confirm not in ("s", "si", "sí", "y", "yes"):
             print("  Cancelado.")
             return
@@ -158,12 +182,12 @@ def main() -> None:
 
     # ── 3. Resetear stats.json ────────────────────────────────────────────────
     empty_stats = {
-        "bets_placed":   0,
-        "bets_won":      0,
-        "bets_lost":     0,
+        "bets_placed": 0,
+        "bets_won": 0,
+        "bets_lost": 0,
         "total_wagered": 0.0,
-        "total_pnl":     0.0,
-        "best_edge":     0.0,
+        "total_pnl": 0.0,
+        "best_edge": 0.0,
     }
     with open(STATS, "w") as f:
         json.dump(empty_stats, f, indent=2)
@@ -171,13 +195,13 @@ def main() -> None:
 
     # ── 4. Limpiar trades.log y escribir marker de inicio ────────────────────
     marker = {
-        "type":            "VERSION_RESET",
-        "timestamp":       time.strftime("%Y-%m-%d %H:%M:%S"),
-        "from_version":    current_version,
-        "to_version":      next_version,
-        "reason":          reason,
+        "type": "VERSION_RESET",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "from_version": current_version,
+        "to_version": next_version,
+        "reason": reason,
         "archived_trades": summary["count"],
-        "archived_pnl":    round(summary["pnl"], 4),
+        "archived_pnl": round(summary["pnl"], 4),
     }
     with open(TRADES, "w") as f:
         f.write(json.dumps(marker) + "\n")

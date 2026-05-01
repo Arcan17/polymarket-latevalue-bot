@@ -1,6 +1,7 @@
 """
 Structured logging setup. All modules import `get_logger`.
 """
+
 import logging
 import sys
 from config.settings import settings

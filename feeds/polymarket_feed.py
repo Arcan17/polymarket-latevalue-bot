@@ -2,6 +2,7 @@
 Feed de mercados y precios de Polymarket via REST API pública.
 Descubre mercados BTC/ETH/SOL activos y obtiene sus precios.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,7 @@ import aiohttp
 from data.models import Market, MarketType
 
 GAMMA_API = "https://gamma-api.polymarket.com"
-CLOB_API  = "https://clob.polymarket.com"
+CLOB_API = "https://clob.polymarket.com"
 
 # Patrones para detectar mercados crypto de precio
 CRYPTO_PATTERNS = [
@@ -27,10 +28,11 @@ DIRECTION_PATTERNS = [
     (r"below|under|lower|down", "below"),
 ]
 
+
 class PolymarketFeed:
     def __init__(self) -> None:
         self._markets: dict[str, Market] = {}
-        self._prices: dict[str, dict] = {}      # token_id → {best_bid, best_ask}
+        self._prices: dict[str, dict] = {}  # token_id → {best_bid, best_ask}
         self._last_refresh = 0.0
         self._session: Optional[aiohttp.ClientSession] = None
 
@@ -50,7 +52,11 @@ class PolymarketFeed:
                 "limit": 100,
                 "tag_slug": "crypto",
             }
-            async with session.get(f"{GAMMA_API}/markets", params=params, timeout=aiohttp.ClientTimeout(total=10)) as r:
+            async with session.get(
+                f"{GAMMA_API}/markets",
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as r:
                 if r.status != 200:
                     return []
                 data = await r.json()
@@ -93,7 +99,7 @@ class PolymarketFeed:
 
             # Extraer strike price del título
             strike = 0.0
-            price_match = re.search(r'\$?([\d,]+(?:\.\d+)?)', question)
+            price_match = re.search(r"\$?([\d,]+(?:\.\d+)?)", question)
             if price_match:
                 strike = float(price_match.group(1).replace(",", ""))
 
@@ -101,6 +107,7 @@ class PolymarketFeed:
             outcomes = raw.get("outcomes", "[]")
             if isinstance(outcomes, str):
                 import json
+
                 try:
                     outcomes = json.loads(outcomes)
                 except:
@@ -109,6 +116,7 @@ class PolymarketFeed:
             tokens = raw.get("clobTokenIds", raw.get("clob_token_ids", "[]"))
             if isinstance(tokens, str):
                 import json
+
                 try:
                     tokens = json.loads(tokens)
                 except:
@@ -123,6 +131,7 @@ class PolymarketFeed:
                 return None
 
             import datetime
+
             end_time = datetime.datetime.fromisoformat(
                 str(end_date).replace("Z", "+00:00")
             ).timestamp()
@@ -131,7 +140,11 @@ class PolymarketFeed:
                 return None
 
             return Market(
-                market_id=str(raw.get("conditionId") or raw.get("condition_id") or raw.get("id", "")),
+                market_id=str(
+                    raw.get("conditionId")
+                    or raw.get("condition_id")
+                    or raw.get("id", "")
+                ),
                 question=raw.get("question") or raw.get("title") or "",
                 token_id_yes=str(tokens[0]),
                 token_id_no=str(tokens[1]),
@@ -151,7 +164,7 @@ class PolymarketFeed:
             async with session.get(
                 f"{CLOB_API}/book",
                 params={"token_id": token_id},
-                timeout=aiohttp.ClientTimeout(total=5)
+                timeout=aiohttp.ClientTimeout(total=5),
             ) as r:
                 if r.status != 200:
                     return None

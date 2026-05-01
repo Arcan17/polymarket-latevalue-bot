@@ -5,6 +5,7 @@ Soporta BTC, ETH, SOL.
 Snapshot de precio al inicio de cada intervalo de 5 minutos,
 igual que Chainlink — así el strike del bot coincide con el real.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,15 +16,17 @@ from typing import Optional
 import websockets
 
 SYMBOLS = ["btcusdt", "ethusdt", "solusdt", "xrpusdt", "bnbusdt"]
-INTERVAL = 300          # 5 minutos en segundos
-KEEP_SLOTS = 12         # guardar los últimos 60 min (12 × 5min)
+INTERVAL = 300  # 5 minutos en segundos
+KEEP_SLOTS = 12  # guardar los últimos 60 min (12 × 5min)
 
 
 class CryptoFeed:
     def __init__(self) -> None:
-        self._prices: dict[str, float] = {}            # symbol → último precio
+        self._prices: dict[str, float] = {}  # symbol → último precio
         self._last_update: dict[str, float] = {}
-        self._slot_prices: dict[str, dict[int, float]] = {}  # symbol → {slot_ts → price}
+        self._slot_prices: dict[str, dict[int, float]] = (
+            {}
+        )  # symbol → {slot_ts → price}
         self._current_slot: int = 0
         self._running = False
 
@@ -101,11 +104,16 @@ class CryptoFeed:
 
         # Log para debug
         prices_str = " | ".join(
-            f"{s}=${self._prices[s]:,.4f}" if s in ("XRP", "BNB") else f"{s}=${self._prices[s]:,.2f}"
+            (
+                f"{s}=${self._prices[s]:,.4f}"
+                if s in ("XRP", "BNB")
+                else f"{s}=${self._prices[s]:,.2f}"
+            )
             for s in ("BTC", "ETH", "SOL", "XRP", "BNB")
             if s in self._prices
         )
         import datetime
+
         dt = datetime.datetime.utcfromtimestamp(slot_ts).strftime("%H:%M")
         print(f"[CRYPTO] Snapshot slot {dt}UTC → {prices_str}")
 

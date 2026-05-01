@@ -18,6 +18,7 @@ Mensaje recibido:
   }
 }
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,9 +33,7 @@ RTDS_URL = "wss://ws-live-data.polymarket.com"
 
 SUBSCRIPTION = {
     "action": "subscribe",
-    "subscriptions": [
-        {"topic": "crypto_prices_chainlink", "type": "*", "filters": ""}
-    ],
+    "subscriptions": [{"topic": "crypto_prices_chainlink", "type": "*", "filters": ""}],
 }
 
 # Mapeo symbol de Polymarket → symbol interno del bot
@@ -135,11 +134,13 @@ class RTDSFeed:
 
         for chainlink_ts, price, _recv in history:
             if chainlink_ts > timestamp:
-                return chainlink_ts, price   # deque ordenado → primer candidato
+                return chainlink_ts, price  # deque ordenado → primer candidato
 
         return None
 
-    def get_price_at(self, symbol: str, timestamp: float, max_delta_s: float = 15.0) -> Optional[float]:
+    def get_price_at(
+        self, symbol: str, timestamp: float, max_delta_s: float = 15.0
+    ) -> Optional[float]:
         """
         Precio Chainlink más cercano al timestamp dado (por timestamp de Chainlink).
         Fallback cuando get_price_before no encuentra datos.
@@ -175,7 +176,9 @@ class RTDSFeed:
 
         cutoff = time.time() - 30.0
         # historial: (chainlink_ts, price, reception_time) — usar reception_time para ventana
-        recent = [(chainlink_ts, p) for chainlink_ts, p, recv in history if recv >= cutoff]
+        recent = [
+            (chainlink_ts, p) for chainlink_ts, p, recv in history if recv >= cutoff
+        ]
         if len(recent) < 2:
             return 0.0
 
@@ -217,7 +220,9 @@ class RTDSFeed:
                     await asyncio.sleep(10.0)
                     silence = time.time() - self._last_message_time
                     if silence > STALE_TIMEOUT:
-                        print(f"[RTDS] ⚠ Sin mensajes por {silence:.0f}s — reconectando...")
+                        print(
+                            f"[RTDS] ⚠ Sin mensajes por {silence:.0f}s — reconectando..."
+                        )
                         try:
                             await ws.close()
                         except Exception:

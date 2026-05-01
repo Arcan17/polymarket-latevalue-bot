@@ -20,16 +20,12 @@ RESTART_CMD = (
 
 
 def is_bot_alive() -> bool:
-    result = subprocess.run(
-        ["ps", "aux"], capture_output=True, text=True
-    )
+    result = subprocess.run(["ps", "aux"], capture_output=True, text=True)
     return "main.py" in result.stdout
 
 
 def restart_bot() -> bool:
-    result = subprocess.run(
-        ["bash", "-c", RESTART_CMD], capture_output=True, text=True
-    )
+    result = subprocess.run(["bash", "-c", RESTART_CMD], capture_output=True, text=True)
     return result.returncode == 0
 
 
@@ -76,7 +72,8 @@ def check_anomalies(trades: list[dict], stats: dict) -> list[str]:
 
     # 1. Edge > 0.50 on entered trades
     high_edge = [
-        t for t in trades
+        t
+        for t in trades
         if isinstance(t.get("edge"), (int, float)) and t["edge"] > 0.50
     ]
     for t in high_edge:
@@ -86,7 +83,9 @@ def check_anomalies(trades: list[dict], stats: dict) -> list[str]:
         )
 
     # 2. stats.json vs log PnL divergence > $5
-    log_pnl = sum(t.get("pnl", 0) for t in trades if isinstance(t.get("pnl"), (int, float)))
+    log_pnl = sum(
+        t.get("pnl", 0) for t in trades if isinstance(t.get("pnl"), (int, float))
+    )
     stats_pnl = stats.get("total_pnl", None)
     if stats_pnl is not None and abs(stats_pnl - log_pnl) > 5:
         anomalies.append(
@@ -116,7 +115,9 @@ def check_anomalies(trades: list[dict], stats: dict) -> list[str]:
 
 def main():
     parser = argparse.ArgumentParser(description="Bot health check")
-    parser.add_argument("--restart", action="store_true", help="Force restart even if alive")
+    parser.add_argument(
+        "--restart", action="store_true", help="Force restart even if alive"
+    )
     args = parser.parse_args()
 
     version = read_version()
